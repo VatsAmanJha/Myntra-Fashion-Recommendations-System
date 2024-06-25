@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Myntra Recommendation System</title>
+    <style>
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            /* max-width: 1200px; */
+            /* margin: 20px auto;*/
+            padding: 10px; 
+            background-color: #d778f477;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Top dresses styles */
+        .top-dresses {
+            width: 45%;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .top-dresses .dress-item {
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease-in-out;
+        }
+        .top-dresses img {
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+        }
+        .top-dresses .dress-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 5px;
+            text-align: center;
+            opacity: 0.8;
+            pointer-events: none; /* Disable pointer events on name overlay */
+        }
+        .top-dresses .dress-item:hover img {
+            transform: scale(1.1);
+        }
+        .top-dresses .dress-item:hover .dress-name {
+            opacity: 1;
+        }
+        .top-dresses .dress-item.selected {
+            border-color: #ff4500; /* Orange border color for selected item */
+        }
+
+        /* Recommendations styles */
+        .recommendations {
+            width: 50%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .recommendations .recommendation-item {
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease-in-out;
+        }
+        .recommendations .recommendation-item img {
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+        }
+        .recommendations .recommendation-item .dress-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 5px;
+            text-align: center;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+        .recommendations .recommendation-item:hover img {
+            transform: scale(1.1);
+        }
+        .recommendations .recommendation-item:hover .dress-name {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+    <img src="Myntra-Logo.png" alt="Myntra Logo" class="logo" height="100px" width="150px">
+    <h1>Myntra Fashion Recommendations</h1>
+</div>
+    <div class="container">
+        <div class="top-dresses" id="topDresses"></div>
+        <div class="recommendations" id="recommendations"></div>
+    </div>
+    <script>
+        // JavaScript code for handling image click and displaying recommendations
+        const topDressesDiv = document.getElementById('topDresses');
+        const recommendationsDiv = document.getElementById('recommendations');
+
+        // Function to fetch top dresses from FastAPI endpoint
+        async function fetchTopDresses() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/top_dresses/');
+                const data = await response.json();
+                return data.recommend;
+            } catch (error) {
+                console.error('Error fetching top dresses:', error);
+            }
+        }
+
+        // Function to fetch recommendations for a dress from FastAPI endpoint
+        async function fetchRecommendations(dressName) {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/recommend/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: dressName })
+                });
+                const data = await response.json();
+                return data.recommend;
+            } catch (error) {
+                console.error('Error fetching recommendations:', error);
+            }
+        }
+
+        // Function to display top dresses in left column
+        async function displayTopDresses() {
+            const topDresses = await fetchTopDresses();
+            topDresses.forEach(dress => {
+                const dressItem = document.createElement('div');
+                dressItem.classList.add('dress-item');
+
+                const imgElement = document.createElement('img');
+                imgElement.src = dress.img;
+                imgElement.alt = dress.name;
+                imgElement.title = dress.name;
+                imgElement.onclick = () => {
+                    clearSelectedItems();
+                    dressItem.classList.add('selected');
+                    displayRecommendations(dress.name);
+                };
+
+                const dressName = document.createElement('div');
+                dressName.classList.add('dress-name');
+                dressName.textContent = dress.name;
+
+                dressItem.appendChild(imgElement);
+                dressItem.appendChild(dressName);
+                topDressesDiv.appendChild(dressItem);
+            });
+        }
+
+        // Function to clear selected items
+        function clearSelectedItems() {
+            const selectedItems = document.querySelectorAll('.selected');
+            selectedItems.forEach(item => item.classList.remove('selected'));
+        }
+
+        // Function to display recommendations for selected dress in right column
+        async function displayRecommendations(selectedDressName) {
+            // Clear previous recommendations
+            recommendationsDiv.innerHTML = '';
+
+            const recommendations = await fetchRecommendations(selectedDressName);
+            recommendations.forEach(recommendation => {
+                const recommendationItem = document.createElement('div');
+                recommendationItem.classList.add('recommendation-item');
+
+                const imgElement = document.createElement('img');
+                imgElement.src = recommendation.img;
+                imgElement.alt = recommendation.name;
+                imgElement.title = recommendation.name;
+
+                const dressName = document.createElement('div');
+                dressName.classList.add('dress-name');
+                dressName.textContent = recommendation.name;
+
+                recommendationItem.appendChild(imgElement);
+                recommendationItem.appendChild(dressName);
+                recommendationsDiv.appendChild(recommendationItem);
+            });
+        }
+
+        // Call the function to display top dresses on page load
+        displayTopDresses();
+    </script>
+</body>
+</html>
